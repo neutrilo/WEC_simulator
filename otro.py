@@ -9,6 +9,45 @@ Created on Sun Nov  6 19:45:24 2022
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button
+import pandas as pd
+
+
+
+
+
+# ---------------------------------------------------------------
+# Data exploring
+# ---------------------------------------------------------------
+
+
+exp_data = pd.read_csv("roll_decay_data.csv", delimiter= '\t')
+# print(exp_data.shape)
+# exp_data[exp_data.columns[0]][0]
+data_t = np.array(exp_data[exp_data.columns[0]])
+data_acel = np.array(exp_data[exp_data.columns[3]])
+def integral(x,t,c=0):
+    dt = t[1:]-t[0:-1]
+    xmed = (x[1:]+x[0:-1])/2
+    return np.append([c],dt*xmed)
+data_vel = integral(data_acel,data_t) 
+data_H = integral(data_vel,data_t)  
+
+
+data_long = np.size(data_t)
+spectrum = np.transpose(np.abs( np.fft.fft(data_acel)[1:int(data_long/4)] ))
+spectrum = [np.linspace(2,len(spectrum)+1,len(spectrum))/np.max(data_t),spectrum/np.max(spectrum)]
+mean = np.sum(spectrum[1]*spectrum[0])/np.sum(spectrum[1])
+plt.axvline(x = mean, color = 'r', label = 'Frecuencia media')
+
+plt.plot(spectrum[0],spectrum[1],label = 'FFT')
+plt.legend()
+plt.xlabel('Frecuencias (Hz)')
+plt.ylabel('FFT normalizada inf')
+plt.title('Aceleracion descompuesta en el dominio de frecuencias')
+plt.show()
+
+
+
 
 
 # ---------------------------------------------------------------
@@ -16,14 +55,13 @@ from matplotlib.widgets import Slider, Button
 # ---------------------------------------------------------------
 
 
-
-
 g = 9.81  # Gravity [m/s^2]
 d = 1025  # Water density [kg/m^3]
 a = 0.1
 n = 100
 depth = 0
-H = np.linspace(-0.15, 0.15, n)  # Wave height [m]
+# H = np.linspace(-0.15, 0.15, n)  # Wave height [m]
+H = np.interp(np.linspace(0,10,n),data_t,data_H)
 
 
 k_base = 20.0
@@ -125,7 +163,7 @@ m1_slider = Slider(
     ax=axfreq,
     label='Masa 1',
     valmin=0.5*m1,
-    valmax=2*m1,
+    valmax=1.5*m1,
     valinit=m1,
     orientation="vertical"
 )
@@ -136,7 +174,7 @@ m2_slider = Slider(
     ax=axfreq,
     label='Masa 2',
     valmin=0.5*m2,
-    valmax=2*m2,
+    valmax=1.5*m2,
     valinit=m2,
     orientation="vertical"
 )
@@ -148,7 +186,7 @@ k_slider = Slider(
     ax=axamp,
     label="K",
     valmin=k_base*0.5,
-    valmax=k_base*2,
+    valmax=k_base*1.5,
     valinit=k_base,
     orientation="vertical"
 )
@@ -167,7 +205,7 @@ k_slider = Slider(
 
 # The function to be called anytime a slider's value changes
 def update(val):
-    line.set_ydata(Energy(t_graf, z_base, m1_slider.val,m1_slider.val, k_slider.val,damp_base))
+    line.set_ydata(Energy(t_graf, z_base, m1_slider.val,m2_slider.val, k_slider.val,damp_base))
     fig.canvas.draw_idle()
     
 # register the update function with each slider
